@@ -6,7 +6,7 @@ async-timeout==5.0.1
 attrs==25.3.0
 certifi==2025.8.3
 charset-normalizer==3.4.3
-conda-pack @ file:///croot/conda-pack_1710258022278/work
+# conda-pack @ file:///croot/conda-pack_1710258022278/work
 contourpy==1.1.1
 cycler==0.12.1
 datasets==3.1.0
