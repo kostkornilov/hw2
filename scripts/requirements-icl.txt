@@ -1,4 +1,6 @@
 # RegBench/Lightning dependencies; reuse the LM environment with torch 2.4.1.
+# Lightning 1.8.6 imports pkg_resources, removed from newer setuptools.
+setuptools==80.9.0
 torch==2.4.1
 torchvision==0.19.1
 pytorch-lightning==1.8.6
