@@ -212,9 +212,13 @@ def validate_run(run):
     from analyze import get_dfa_probs
     from src.dataloaders.dfa import Vocab
 
+    run = Path(run).resolve()
     timing = json.loads((run / "timing.json").read_text())
     evaluation = json.loads((run / "evaluation.json").read_text())
-    ckpt = torch.load(timing["best_checkpoint"], map_location="cpu", weights_only=False)
+    best_checkpoint = Path(timing["best_checkpoint"])
+    if not best_checkpoint.is_absolute():
+        best_checkpoint = run / best_checkpoint
+    ckpt = torch.load(best_checkpoint, map_location="cpu", weights_only=False)
     assert ckpt["state_dict"] and ckpt["optimizer_states"] and ckpt["lr_schedulers"]
     assert all(torch.isfinite(v).all() for v in ckpt["state_dict"].values() if v.is_floating_point())
     cfg = json.loads((run / "config.json").read_text())
