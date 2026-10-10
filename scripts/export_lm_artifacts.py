@@ -10,64 +10,10 @@ from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FuncFormatter, MaxNLocator
-from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 import torch
 
 LABELS = {"softmax": "Gaussian / softmax", "epanechnikov": "Epanechnikov / sparsemax",
           "relumax": "1-ReLUmax"}
-PLOT_STYLES = {
-    "softmax": ("Gaussian", "#3b82f6"),
-    "epanechnikov": ("Epanechnikov (sparsemax)", "#d62728"),
-    "relumax": ("1-ReLUmax", "#9467bd"),
-}
-
-
-def plot_loss_curves(root, histories, kind):
-    """Paper-style validation plot; preserve actual steps and loss values."""
-    with plt.rc_context({"font.family": "sans-serif", "font.size": 16,
-                         "axes.titlesize": 21, "axes.labelsize": 17,
-                         "xtick.labelsize": 14, "ytick.labelsize": 14,
-                         "axes.edgecolor": "0.78", "axes.linewidth": 0.8,
-                         "pdf.fonttype": 42}):
-        fig, axis = plt.subplots(figsize=(8.4, 5.7))
-        fig.subplots_adjust(left=0.12, right=0.98, bottom=0.17, top=0.73)
-        for method, history in histories.items():
-            label, color = PLOT_STYLES[method]
-            axis.plot(history["iter"], history["val"], color=color,
-                      linestyle="--", linewidth=1.3, label=label)
-        axis.set(title="1 Layer", xlabel="Iteration", ylabel="Loss (val)")
-        steps = sorted({s for history in histories.values() for s in history["iter"]})
-        axis.set_xlim(0, steps[-1])
-        axis.xaxis.set_major_locator(MaxNLocator(nbins=8, integer=True))
-        axis.xaxis.set_major_formatter(FuncFormatter(
-            lambda value, _: f"{value / 1000:g}k" if abs(value) >= 1000 else f"{value:g}"))
-        axis.grid(color="0.88", linestyle=":", linewidth=0.7, alpha=0.7)
-        axis.set_axisbelow(True)
-        fig.legend(*axis.get_legend_handles_labels(), loc="upper left",
-                   bbox_to_anchor=(0.12, 0.99), ncol=2, frameon=False,
-                   fontsize=16, handlelength=2.8, columnspacing=1.2)
-
-        # A two-point timing check has too little history for a useful zoom.
-        if len(steps) >= 8:
-            zoom_start = steps[-max(3, math.ceil(len(steps) / 8))]
-            tail = [value for history in histories.values()
-                    for step, value in zip(history["iter"], history["val"])
-                    if step >= zoom_start]
-            padding = max((max(tail) - min(tail)) * 0.15, 0.005)
-            inset = axis.inset_axes([0.55, 0.55, 0.40, 0.37])
-            for method, history in histories.items():
-                inset.plot(history["iter"], history["val"], color=PLOT_STYLES[method][1],
-                           linestyle="--", linewidth=1.0)
-            inset.set(xlim=(zoom_start, steps[-1]),
-                      ylim=(min(tail) - padding, max(tail) + padding), xticks=[], yticks=[])
-            mark_inset(axis, inset, loc1=3, loc2=4, facecolor="none",
-                       edgecolor="0.6", linestyle="--", linewidth=0.7)
-        fig.text(0.12, 0.035, f"BabiStories · {kind}", fontsize=10, color="0.4")
-        for extension in ("png", "pdf"):
-            fig.savefig(root / f"loss_curves.{extension}", dpi=200,
-                        bbox_inches="tight", pad_inches=0.12)
-        plt.close(fig)
 
 
 def export(root, methods, kind):
@@ -140,7 +86,18 @@ def export(root, methods, kind):
     rows += ["", "ckpt.pt contains the final model. Best observed loss refers to recorded evaluations;",
              "a separate checkpoint for the best step is not retained."]
     (root / "results_summary.md").write_text("\n".join(rows) + "\n")
-    plot_loss_curves(root, histories, kind)
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4))
+    for method, history in histories.items():
+        for axis, split in zip(axes, ("train", "val")):
+            axis.plot(history["iter"], history[split], marker="o", label=LABELS[method])
+            axis.set(xlabel="Optimizer step", ylabel=f"{split.capitalize()} loss")
+            axis.grid(alpha=0.3)
+    axes[1].legend()
+    fig.suptitle(f"BabiStories, 1 layer — {kind}")
+    fig.tight_layout()
+    for extension in ("png", "pdf"):
+        fig.savefig(root / f"loss_curves.{extension}", dpi=180)
+    plt.close(fig)
     (root / "artifact_validation.json").write_text(json.dumps({
         "status": "passed", "run_kind": kind, "methods": methods, "artifacts": manifest,
     }, indent=2) + "\n")
