@@ -12,8 +12,8 @@ class StackAssoMem(StackAssoMemBase):
                 ic_dropout=0.05, hd_dropout=0.05, 
                 bias=False, 
                 pmem_count=1, pmem_size=2688, pre_ln=True, weight_tying=True, skip_tokens=0, attn_only=False, \
-                config={}):
-        super().__init__(vocab_size=vocab_size, n_head=n_head, n_embd=n_embd, n_layer=n_layer, v_shift=v_shift, block_size=block_size, \
+                config={}, method="softmax"):
+        super().__init__(vocab_size=vocab_size, method=method, n_head=n_head, n_embd=n_embd, n_layer=n_layer, v_shift=v_shift, block_size=block_size, \
                 k_fe_type=k_fe_type, v_fe_type=v_fe_type, \
                 k_kernel_size=k_kernel_size, v_kernel_size=v_kernel_size, \
                 ic_dropout=ic_dropout, hd_dropout=hd_dropout, 
