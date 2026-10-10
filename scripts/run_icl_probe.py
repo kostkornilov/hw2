@@ -289,7 +289,8 @@ def summarize(args):
         writer = csv.DictWriter(stream, fieldnames=rows[0])
         writer.writeheader()
         writer.writerows(rows)
-    lines = ["Короткая проверка RegBench: это не результаты полного обучения.", "",
+    kind = getattr(args, "kind", "timing-smoke")
+    lines = [("Короткая проверка RegBench: это не результаты полного обучения." if kind == "timing-smoke" else "RegBench: 200 эпох, train 1k, один seed; best checkpoint по validation loss."), "",
              "| Method | Train s/epoch | Validation s/epoch | 200 epochs, h | Test accuracy | Test TVD | Last-token accuracy | Last-token TVD |",
              "|---|---:|---:|---:|---:|---:|---:|---:|"]
     for row in rows:
@@ -304,8 +305,9 @@ def summarize(args):
     for method in ("softmax", "epanechnikov", "relumax"):
         timing = json.loads((args.run / method / "timing.json").read_text())
         ax.plot([e["epoch"] + 1 for e in timing["epochs"]], [e["val/loss"] for e in timing["epochs"]], marker="o", label=method)
-    ax.set(xlabel="Epoch", ylabel="Validation loss", title="RegBench 1k — timing probe")
-    ax.set_xticks([e["epoch"] + 1 for e in timing["epochs"]])
+    ax.set(xlabel="Epoch", ylabel="Validation loss", title=f"RegBench 1k — {kind}")
+    if len(timing["epochs"]) <= 10:
+        ax.set_xticks([e["epoch"] + 1 for e in timing["epochs"]])
     ax.grid(alpha=0.25)
     ax.legend()
     fig.tight_layout()
@@ -324,6 +326,7 @@ def main():
     parser.add_argument("--examples", type=int, default=1000)
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--method", choices=("softmax", "epanechnikov", "relumax"), default="softmax")
+    parser.add_argument("--kind", choices=("timing-smoke", "budget-training"), default="timing-smoke")
     args = parser.parse_args()
     args.source = args.source.resolve()
     for name in ("cache", "run"):

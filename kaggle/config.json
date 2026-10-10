@@ -1,0 +1,43 @@
+{
+  "methods": ["softmax", "epanechnikov", "relumax"],
+  "language_modeling": {
+    "seed": 1337,
+    "attention_backend": "adasplash",
+    "dtype": "float16",
+    "compile": true,
+    "n_layer": 1,
+    "n_embd": 768,
+    "n_head": 12,
+    "pmem_size": 2688,
+    "block_size": 512,
+    "batch_size": 8,
+    "gradient_accumulation_steps": 32,
+    "learning_rate": 0.005,
+    "min_lr": 0.0001,
+    "weight_decay": 0.1,
+    "beta1": 0.9,
+    "beta2": 0.95,
+    "grad_clip": 1.0,
+    "warmup_iters": 25,
+    "lr_decay_iters": 1000,
+    "decay_type": "cosine",
+    "eval_iters": 10,
+    "log_interval": 100
+  },
+  "in_context_learning": {
+    "source_commit": "9b9223d15348b5a415fb453ed988ed5f7ab9fbdc",
+    "examples": 1000
+  },
+  "length_generalization": {
+    "seed": 1338,
+    "micro_batch": 32,
+    "eval_batch": 8,
+    "lr_warmup": 1536,
+    "lr_decay": 6000,
+    "budget_minutes": 150
+  },
+  "modes": {
+    "smoke": {"lm_steps": 4, "lm_eval_interval": 2, "icl_epochs": 3, "sort_steps": 4, "sort_measurement_warmup": 1, "sort_test_examples": 128},
+    "full": {"lm_steps": 1000, "lm_eval_interval": 100, "icl_epochs": 200, "sort_steps": 6000, "sort_measurement_warmup": 8, "sort_test_examples": 1000}
+  }
+}
