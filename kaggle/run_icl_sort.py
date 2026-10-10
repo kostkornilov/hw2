@@ -1,4 +1,4 @@
-"""Kaggle script: RegBench, followed by sort. Defaults to smoke.
+"""Kaggle script: independent RegBench or sort, or both. Defaults to smoke.
 
 Uses shared setup functions from the pinned repository's run_lm.py.
 No new trainer or model implementation is introduced.
@@ -11,6 +11,7 @@ import subprocess
 import sys
 
 RUN_MODE = "smoke"
+TASK = "icl_sort"
 REPO_REVISION = "main"  # --package replaces this with the local committed SHA.
 REPO_URL = "https://github.com/kostkornilov/hw2.git"
 
@@ -95,6 +96,7 @@ def sort(job):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mode", choices=("smoke", "full"), default=RUN_MODE)
+    parser.add_argument("--task", choices=("icl", "sort", "icl_sort"), default=TASK)
     parser.add_argument("--package", type=Path)
     parser.add_argument("--revision")
     parser.add_argument("--plan", action="store_true")
@@ -103,7 +105,7 @@ def main():
     if args.package or args.plan or args.check_output:
         sys.path.insert(0, str(Path(__file__).resolve().parent))
     else:
-        base = Path("/tmp/hw2-runtime/icl_sort")
+        base = Path("/tmp/hw2-runtime") / args.task
         repo = base / "repo"
         base.mkdir(parents=True, exist_ok=True)
         if not repo.exists():
@@ -115,17 +117,19 @@ def main():
         check_output(args.check_output)
         return
     if args.package:
-        package(Path(__file__), args.package, args.mode, args.revision)
+        package(Path(__file__), args.package, args.mode, args.revision, group=args.task)
         return
     if args.plan:
         config, limits = configuration(Path(__file__).resolve().parent.parent, args.mode)
-        print(json.dumps({"job": "icl_sort", "mode": args.mode, "limits": limits, "config": config}, indent=2))
+        print(json.dumps({"job": args.task, "mode": args.mode, "limits": limits, "config": config}, indent=2))
         return
-    job = Job("icl_sort", args.mode, repo, base)
+    job = Job(args.task, args.mode, repo, base)
     try:
-        job.environment(icl=True)
-        icl(job)
-        sort(job)
+        job.environment(icl=args.task != "sort")
+        if args.task != "sort":
+            icl(job)
+        if args.task != "icl":
+            sort(job)
     except BaseException as error:
         job.finish(error)
         raise

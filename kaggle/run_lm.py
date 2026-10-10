@@ -31,7 +31,7 @@ def configuration(repo, mode):
     return config, config["modes"][mode]
 
 
-def package(entry, directory, mode, revision=None):
+def package(entry, directory, mode, revision=None, group=None):
     """Package only the entry script and metadata; config is read from pinned git."""
     repo = entry.resolve().parent.parent
     sha = revision or subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip()
@@ -44,9 +44,10 @@ def package(entry, directory, mode, revision=None):
         raise ValueError("Commit kaggle/ and scripts/ changes before packaging")
     text = entry.read_text().replace('RUN_MODE = "smoke"', f'RUN_MODE = "{mode}"', 1)
     text = text.replace('REPO_REVISION = "main"', f'REPO_REVISION = "{sha}"', 1)
+    group = group or ("lm" if entry.name == "run_lm.py" else "icl_sort")
+    text = text.replace('TASK = "icl_sort"', f'TASK = "{group}"', 1)
     directory.mkdir(parents=True, exist_ok=False)
     (directory / entry.name).write_text(text)
-    group = "lm" if entry.name == "run_lm.py" else "icl_sort"
     metadata = json.loads((repo / "kaggle" / group / "kernel-metadata.json").read_text())
     metadata["code_file"] = entry.name
     save_json(directory / "kernel-metadata.json", metadata)
@@ -79,7 +80,7 @@ class Job:
         self.commands = []
         self.started = time.monotonic()
         sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip()
-        save_json(self.root / "configuration.json", {"mode": mode, "repository_commit": sha,
+        save_json(self.root / "configuration.json", {"job": group, "mode": mode, "repository_commit": sha,
                   "config": self.config, "effective_limits": self.limits,
                   "deviations": {"lm": "1000 instead of 80000 steps; warmup 25 / decay 1000; one seed; FP16",
                                  "icl": "Only train 1k; one seed; two T4 instead of author A6000",
@@ -232,6 +233,11 @@ def check_output(path):
         status = json.loads(archive.read("job_status.json"))
         assert status["status"] == "passed", status
         config = json.loads(archive.read("configuration.json"))
+        group = config.get("job", "lm" if "language_modeling/artifact_validation.json" in manifest else "icl_sort")
+        required = {"lm": ("language_modeling",), "icl": ("in_context_learning",),
+                    "sort": ("length_generalization",),
+                    "icl_sort": ("in_context_learning", "length_generalization")}[group]
+        assert all(any(name.startswith(stage + "/") for name in manifest) for stage in required)
         commands = json.loads(archive.read("commands.json"))
         assert commands and all(c.get("return_code") == 0 for c in commands)
         if "language_modeling/artifact_validation.json" in manifest:
@@ -240,13 +246,16 @@ def check_output(path):
             for method in config["config"]["methods"]:
                 history = json.loads(archive.read(f"language_modeling/runs/{method}/loss_history.json"))
                 assert history["iter"][-1] == config["effective_limits"]["lm_steps"]
-        else:
+        if any(name.startswith("in_context_learning/") for name in manifest):
             for method in config["config"]["methods"]:
                 icl = json.loads(archive.read(f"in_context_learning/{method}/artifact_validation.json"))
-                sort = json.loads(archive.read(f"length_generalization/{method}/artifact_validation.json"))
-                assert icl["status"] == "passed" and sort["valid"]
+                assert icl["status"] == "passed"
                 timing = json.loads(archive.read(f"in_context_learning/{method}/timing.json"))
                 assert timing["probe_epochs"] == config["effective_limits"]["icl_epochs"]
+        if any(name.startswith("length_generalization/") for name in manifest):
+            for method in config["config"]["methods"]:
+                sort = json.loads(archive.read(f"length_generalization/{method}/artifact_validation.json"))
+                assert sort["valid"]
                 timing = json.loads(archive.read(f"length_generalization/{method}/timing.json"))
                 assert len(timing["steps"]) == config["effective_limits"]["sort_steps"]
     print(f"Downloaded archive passed: {path}; mode={status['mode']}; {len(manifest)} files verified")

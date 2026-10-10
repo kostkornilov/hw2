@@ -1,0 +1,15 @@
+{
+  "id": "konstantinkornilov/hw2-icl",
+  "title": "hw2-icl",
+  "code_file": "run_icl_sort.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "machine_shape": "NvidiaTeslaT4",
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}
