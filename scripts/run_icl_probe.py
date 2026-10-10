@@ -316,7 +316,7 @@ def main():
     parser.add_argument("action", choices=("prepare", "train", "evaluate", "summarize"))
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--cache", type=Path)
-    parser.add_argument("--run", type=Path)
+    parser.add_argument("--output-dir", "--run", dest="run", type=Path)
     parser.add_argument("--examples", type=int, default=1000)
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--method", choices=("softmax", "epanechnikov", "relumax"), default="softmax")
