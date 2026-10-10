@@ -1,0 +1,209 @@
+{
+  "source_notebook": "lm_interactive.ipynb",
+  "source_sha256": "a2c73e17b85d867a71a95ea0c7407fd610cc34a21d4ba1680acba1cf17057022",
+  "source_type": "saved_notebook_stdout",
+  "comparison_step": 800,
+  "recorded_precision_decimal_places": 4,
+  "checkpoints_available": false,
+  "metric_checks": "Finite values; all steps 100..800 for every method; no conflicting duplicates",
+  "limitations": "Metrics extracted from stdout; model weights and optimizer states cannot be verified",
+  "rows": 28,
+  "evidence": [
+    {
+      "method": "softmax",
+      "step": 100,
+      "cell_index": 7,
+      "line_index": 4082,
+      "text": "INFO - 10/10/26 15:27:11 - 0:07:13 - [eval] step 100: train loss 5.1206, val loss 5.1044"
+    },
+    {
+      "method": "softmax",
+      "step": 200,
+      "cell_index": 7,
+      "line_index": 4085,
+      "text": "INFO - 10/10/26 15:33:18 - 0:13:19 - [eval] step 200: train loss 4.0782, val loss 4.1216"
+    },
+    {
+      "method": "softmax",
+      "step": 300,
+      "cell_index": 7,
+      "line_index": 4088,
+      "text": "INFO - 10/10/26 15:39:23 - 0:19:24 - [eval] step 300: train loss 3.5604, val loss 3.6362"
+    },
+    {
+      "method": "softmax",
+      "step": 400,
+      "cell_index": 7,
+      "line_index": 4091,
+      "text": "INFO - 10/10/26 15:45:27 - 0:25:29 - [eval] step 400: train loss 3.2900, val loss 3.3020"
+    },
+    {
+      "method": "softmax",
+      "step": 500,
+      "cell_index": 7,
+      "line_index": 4094,
+      "text": "INFO - 10/10/26 15:51:32 - 0:31:33 - [eval] step 500: train loss 3.1036, val loss 3.0863"
+    },
+    {
+      "method": "softmax",
+      "step": 600,
+      "cell_index": 7,
+      "line_index": 4097,
+      "text": "INFO - 10/10/26 15:57:37 - 0:37:38 - [eval] step 600: train loss 2.9748, val loss 2.9320"
+    },
+    {
+      "method": "softmax",
+      "step": 700,
+      "cell_index": 7,
+      "line_index": 4100,
+      "text": "INFO - 10/10/26 16:03:42 - 0:43:43 - [eval] step 700: train loss 2.8815, val loss 2.9002"
+    },
+    {
+      "method": "softmax",
+      "step": 800,
+      "cell_index": 7,
+      "line_index": 4103,
+      "text": "INFO - 10/10/26 16:09:47 - 0:49:48 - [eval] step 800: train loss 2.8071, val loss 2.8421"
+    },
+    {
+      "method": "softmax",
+      "step": 900,
+      "cell_index": 7,
+      "line_index": 4106,
+      "text": "INFO - 10/10/26 16:15:52 - 0:55:54 - [eval] step 900: train loss 2.8132, val loss 2.7910"
+    },
+    {
+      "method": "softmax",
+      "step": 1000,
+      "cell_index": 7,
+      "line_index": 4109,
+      "text": "INFO - 10/10/26 16:21:57 - 1:01:58 - [eval] step 1000: train loss 2.7690, val loss 2.8033"
+    },
+    {
+      "method": "epanechnikov",
+      "step": 100,
+      "cell_index": 7,
+      "line_index": 4200,
+      "text": "INFO - 10/10/26 16:30:33 - 0:08:27 - [eval] step 100: train loss 5.0424, val loss 5.0276"
+    },
+    {
+      "method": "epanechnikov",
+      "step": 200,
+      "cell_index": 7,
+      "line_index": 4203,
+      "text": "INFO - 10/10/26 16:38:16 - 0:16:10 - [eval] step 200: train loss 4.0444, val loss 4.0860"
+    },
+    {
+      "method": "epanechnikov",
+      "step": 300,
+      "cell_index": 7,
+      "line_index": 4206,
+      "text": "INFO - 10/10/26 16:45:59 - 0:23:53 - [eval] step 300: train loss 3.5341, val loss 3.6016"
+    },
+    {
+      "method": "epanechnikov",
+      "step": 400,
+      "cell_index": 7,
+      "line_index": 4209,
+      "text": "INFO - 10/10/26 16:53:43 - 0:31:36 - [eval] step 400: train loss 3.2643, val loss 3.2774"
+    },
+    {
+      "method": "epanechnikov",
+      "step": 500,
+      "cell_index": 7,
+      "line_index": 4212,
+      "text": "INFO - 10/10/26 17:01:26 - 0:39:19 - [eval] step 500: train loss 3.0725, val loss 3.0545"
+    },
+    {
+      "method": "epanechnikov",
+      "step": 600,
+      "cell_index": 7,
+      "line_index": 4215,
+      "text": "INFO - 10/10/26 17:09:09 - 0:47:02 - [eval] step 600: train loss 2.9443, val loss 2.9028"
+    },
+    {
+      "method": "epanechnikov",
+      "step": 700,
+      "cell_index": 7,
+      "line_index": 4218,
+      "text": "INFO - 10/10/26 17:16:52 - 0:54:46 - [eval] step 700: train loss 2.8567, val loss 2.8734"
+    },
+    {
+      "method": "epanechnikov",
+      "step": 800,
+      "cell_index": 7,
+      "line_index": 4221,
+      "text": "INFO - 10/10/26 17:24:35 - 1:02:29 - [eval] step 800: train loss 2.7749, val loss 2.8131"
+    },
+    {
+      "method": "epanechnikov",
+      "step": 900,
+      "cell_index": 7,
+      "line_index": 4224,
+      "text": "INFO - 10/10/26 17:32:18 - 1:10:12 - [eval] step 900: train loss 2.7874, val loss 2.7626"
+    },
+    {
+      "method": "epanechnikov",
+      "step": 1000,
+      "cell_index": 7,
+      "line_index": 4227,
+      "text": "INFO - 10/10/26 17:40:01 - 1:17:55 - [eval] step 1000: train loss 2.7355, val loss 2.7744"
+    },
+    {
+      "method": "relumax",
+      "step": 100,
+      "cell_index": 7,
+      "line_index": 4255,
+      "text": "INFO - 10/10/26 17:46:56 - 0:06:45 - [eval] step 100: train loss 5.0870, val loss 5.0704"
+    },
+    {
+      "method": "relumax",
+      "step": 200,
+      "cell_index": 7,
+      "line_index": 4258,
+      "text": "INFO - 10/10/26 17:53:11 - 0:13:00 - [eval] step 200: train loss 4.0503, val loss 4.0932"
+    },
+    {
+      "method": "relumax",
+      "step": 300,
+      "cell_index": 7,
+      "line_index": 4261,
+      "text": "INFO - 10/10/26 17:59:25 - 0:19:14 - [eval] step 300: train loss 3.5215, val loss 3.5937"
+    },
+    {
+      "method": "relumax",
+      "step": 400,
+      "cell_index": 7,
+      "line_index": 4264,
+      "text": "INFO - 10/10/26 18:05:40 - 0:25:29 - [eval] step 400: train loss 3.2686, val loss 3.2781"
+    },
+    {
+      "method": "relumax",
+      "step": 500,
+      "cell_index": 7,
+      "line_index": 4267,
+      "text": "INFO - 10/10/26 18:11:54 - 0:31:43 - [eval] step 500: train loss 3.0952, val loss 3.0722"
+    },
+    {
+      "method": "relumax",
+      "step": 600,
+      "cell_index": 7,
+      "line_index": 4270,
+      "text": "INFO - 10/10/26 18:18:09 - 0:37:58 - [eval] step 600: train loss 2.9682, val loss 2.9263"
+    },
+    {
+      "method": "relumax",
+      "step": 700,
+      "cell_index": 7,
+      "line_index": 4273,
+      "text": "INFO - 10/10/26 18:24:23 - 0:44:12 - [eval] step 700: train loss 2.8793, val loss 2.8957"
+    },
+    {
+      "method": "relumax",
+      "step": 800,
+      "cell_index": 7,
+      "line_index": 4276,
+      "text": "INFO - 10/10/26 18:30:37 - 0:50:26 - [eval] step 800: train loss 2.7997, val loss 2.8400"
+    }
+  ]
+}

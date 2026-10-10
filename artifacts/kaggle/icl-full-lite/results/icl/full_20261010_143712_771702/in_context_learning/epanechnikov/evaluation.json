@@ -1,0 +1,28 @@
+{
+  "elapsed_seconds": 641.3386834069997,
+  "metrics": [
+    {
+      "final_val/accuracy_ignore_index": 0.5910346508026123,
+      "final_val/loss": 1.1283644437789917,
+      "final_val/dfa_accuracy": 0.9402207732200623,
+      "final_val/model_ngram_diff": 0.47279067113294715,
+      "final_val/model_dfa_diff": 0.6493042638749661,
+      "final_val/dfa_ngram_diff": 0.5101472125390796,
+      "final_val/n_gram_loss": 1.1030039964633878,
+      "final_val/n_gram_dfa_acc": 0.9334376454353333,
+      "final_val/perplexity": 3.09059756528909
+    },
+    {
+      "final_test/accuracy_ignore_index": 0.5700057744979858,
+      "final_test/loss": 1.1818535327911377,
+      "final_test/dfa_accuracy": 0.9356987476348877,
+      "final_test/model_ngram_diff": 0.4782652935214772,
+      "final_test/model_dfa_diff": 0.6654324664069482,
+      "final_test/dfa_ngram_diff": 0.530669092518229,
+      "final_test/n_gram_loss": 1.1609674182670617,
+      "final_test/n_gram_dfa_acc": 0.929499626159668,
+      "final_test/perplexity": 3.260412016576164
+    }
+  ],
+  "checkpoint": "checkpoints/best.ckpt"
+}

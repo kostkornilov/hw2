@@ -1,0 +1,143 @@
+{
+  "train": {
+    "seed": 0,
+    "interval": "step",
+    "monitor": "val/loss",
+    "mode": "min",
+    "ema": 0.0,
+    "test": true,
+    "debug": false,
+    "ignore_warnings": false,
+    "state": {
+      "mode": null,
+      "n_context": 0,
+      "n_context_eval": 0
+    },
+    "ckpt": null,
+    "disable_dataset": false,
+    "validate_at_start": false,
+    "pretrained_model_path": null,
+    "pretrained_model_strict_load": true,
+    "pretrained_model_state_hook": {
+      "_name_": null
+    },
+    "post_init_hook": {
+      "_name_": null
+    },
+    "layer_decay": {
+      "_name_": null,
+      "decay": 0.7
+    },
+    "global_batch_size": 32
+  },
+  "tolerance": {
+    "logdir": "./resume",
+    "id": null
+  },
+  "wandb": null,
+  "trainer": {
+    "_target_": "pytorch_lightning.Trainer",
+    "devices": 2,
+    "accelerator": "gpu",
+    "accumulate_grad_batches": 1,
+    "max_epochs": 200,
+    "gradient_clip_val": 1.0,
+    "log_every_n_steps": 1,
+    "limit_train_batches": 1.0,
+    "limit_val_batches": 1.0,
+    "num_nodes": 1,
+    "max_steps": 6400,
+    "strategy": "ddp_find_unused_parameters_false",
+    "precision": 32,
+    "num_sanity_val_steps": 0,
+    "enable_progress_bar": false
+  },
+  "loader": {
+    "batch_size": 50,
+    "num_workers": 4,
+    "pin_memory": true,
+    "drop_last": true
+  },
+  "dataset": {
+    "_name_": "icl_dfa",
+    "num_examples": 1000,
+    "num_test_examples": 1000,
+    "vocab_size": 20,
+    "max_num_nodes": 12,
+    "max_num_in_context_examples": 20,
+    "min_num_in_context_examples": 10,
+    "max_outgoing_edges": 4,
+    "max_len_per_example": 50,
+    "input_seq_len": 4096,
+    "copy_method": "assoc_recall",
+    "batch_size": 16
+  },
+  "optimizer": {
+    "_name_": "adamw",
+    "lr": 0.0001,
+    "weight_decay": 0.01,
+    "betas": [
+      0.9,
+      0.999
+    ]
+  },
+  "scheduler": {
+    "_name_": "cosine_warmup_timm",
+    "t_in_epochs": false,
+    "t_initial": 6400,
+    "lr_min": 1e-05,
+    "warmup_lr_init": 1e-06,
+    "warmup_t": 640
+  },
+  "callbacks": {
+    "learning_rate_monitor": {
+      "logging_interval": "step"
+    },
+    "timer": {
+      "step": true,
+      "inter_step": false,
+      "epoch": true,
+      "val": true
+    },
+    "params": {
+      "total": true,
+      "trainable": true,
+      "fixed": true
+    },
+    "model_checkpoint": {
+      "monitor": "val/loss",
+      "mode": "min",
+      "save_top_k": 1,
+      "save_last": false,
+      "dirpath": "checkpoints/",
+      "filename": "val/loss",
+      "auto_insert_metric_name": false,
+      "verbose": true
+    }
+  },
+  "task": {
+    "_name_": "dfalm",
+    "loss": "cross_entropy",
+    "torchmetrics": [
+      "perplexity"
+    ],
+    "metrics": [
+      "accuracy_ignore_index"
+    ]
+  },
+  "encoder": null,
+  "decoder": null,
+  "n_halfembd": 64,
+  "model": {
+    "_name_": "mm",
+    "n_embd": 128,
+    "n_head": 8,
+    "n_layer": 2,
+    "pmem_size": 448,
+    "block_size": 1000,
+    "ic_dropout": 0.05,
+    "hd_dropout": 0.05,
+    "vocab_size": 20,
+    "method": "epanechnikov"
+  }
+}

@@ -1,0 +1,314 @@
+[
+  {
+    "stage": "install_uv",
+    "command": [
+      "/usr/bin/python3",
+      "-m",
+      "pip",
+      "install",
+      "uv"
+    ],
+    "cwd": "/tmp/hw2-runtime/icl/repo",
+    "return_code": 0,
+    "seconds": 6.781796012000001
+  },
+  {
+    "stage": "python311",
+    "command": [
+      "/usr/bin/python3",
+      "-m",
+      "uv",
+      "venv",
+      "--python",
+      "3.11",
+      "--seed",
+      "/tmp/hw2-runtime/icl/env"
+    ],
+    "cwd": "/tmp/hw2-runtime/icl/repo",
+    "return_code": 0,
+    "seconds": 1.9066875119999906
+  },
+  {
+    "stage": "dependencies",
+    "command": [
+      "/tmp/hw2-runtime/icl/env/bin/python",
+      "-m",
+      "pip",
+      "install",
+      "-r",
+      "/tmp/hw2-runtime/icl/repo/sparse_kernel_regression/Library/requirements.txt"
+    ],
+    "cwd": "/tmp/hw2-runtime/icl/repo",
+    "return_code": 0,
+    "seconds": 262.10418455300004
+  },
+  {
+    "stage": "ninja",
+    "command": [
+      "/tmp/hw2-runtime/icl/env/bin/python",
+      "-m",
+      "pip",
+      "install",
+      "ninja"
+    ],
+    "cwd": "/tmp/hw2-runtime/icl/repo",
+    "return_code": 0,
+    "seconds": 0.9393671549999567
+  },
+  {
+    "stage": "memory_mosaics",
+    "command": [
+      "/tmp/hw2-runtime/icl/env/bin/python",
+      "-m",
+      "pip",
+      "install",
+      "-e",
+      "/tmp/hw2-runtime/icl/repo/sparse_kernel_regression/Library",
+      "--no-deps"
+    ],
+    "cwd": "/tmp/hw2-runtime/icl/repo",
+    "return_code": 0,
+    "seconds": 2.721228301999986
+  },
+  {
+    "stage": "icl_dependencies",
+    "command": [
+      "/tmp/hw2-runtime/icl/env/bin/python",
+      "-m",
+      "pip",
+      "install",
+      "-r",
+      "/tmp/hw2-runtime/icl/repo/scripts/requirements-icl.txt"
+    ],
+    "cwd": "/tmp/hw2-runtime/icl/repo",
+    "return_code": 0,
+    "seconds": 25.823187656000016
+  },
+  {
+    "stage": "gpu_check",
+    "command": [
+      "/tmp/hw2-runtime/icl/env/bin/python",
+      "-c",
+      "import torch; from importlib.metadata import version; from adasplash import adasplash_no_block_mask; assert torch.cuda.device_count()==2; assert version('torch').split('+')[0]=='2.4.1'; assert version('adasplash')=='0.1.1b0'; assert version('triton')=='3.0.0'; print([torch.cuda.get_device_name(i) for i in range(2)])"
+    ],
+    "cwd": "/tmp/hw2-runtime/icl/repo",
+    "return_code": 0,
+    "seconds": 6.037522470999988
+  },
+  {
+    "stage": "seq_icl_clone",
+    "command": [
+      "git",
+      "clone",
+      "https://github.com/berlino/seq_icl.git",
+      "/tmp/hw2-runtime/icl/seq_icl"
+    ],
+    "cwd": "/tmp/hw2-runtime/icl/repo",
+    "return_code": 0,
+    "seconds": 0.649306337999974
+  },
+  {
+    "stage": "seq_icl_checkout",
+    "command": [
+      "git",
+      "checkout",
+      "--detach",
+      "9b9223d15348b5a415fb453ed988ed5f7ab9fbdc"
+    ],
+    "cwd": "/tmp/hw2-runtime/icl/seq_icl",
+    "return_code": 0,
+    "seconds": 0.02042181100000562
+  },
+  {
+    "stage": "icl_data",
+    "command": [
+      "/tmp/hw2-runtime/icl/env/bin/python",
+      "/tmp/hw2-runtime/icl/repo/scripts/run_icl_probe.py",
+      "prepare",
+      "--source",
+      "/tmp/hw2-runtime/icl/seq_icl",
+      "--cache",
+      "/tmp/hw2-runtime/icl/regbench/dfa_1000_eval500_lenauthor_seed0.pt",
+      "--examples",
+      "1000",
+      "--eval-examples",
+      "500"
+    ],
+    "cwd": "/tmp/hw2-runtime/icl/repo",
+    "return_code": 0,
+    "seconds": 22.35739483499998
+  },
+  {
+    "stage": "icl_softmax_train",
+    "command": [
+      "/tmp/hw2-runtime/icl/env/bin/python",
+      "-m",
+      "torch.distributed.run",
+      "--standalone",
+      "--nproc_per_node=2",
+      "/tmp/hw2-runtime/icl/repo/scripts/run_icl_probe.py",
+      "train",
+      "--source",
+      "/tmp/hw2-runtime/icl/seq_icl",
+      "--cache",
+      "/tmp/hw2-runtime/icl/regbench/dfa_1000_eval500_lenauthor_seed0.pt",
+      "--examples",
+      "1000",
+      "--eval-examples",
+      "500",
+      "--output-dir",
+      "/kaggle/working/results/icl/full_20261010_143712_771702/in_context_learning/softmax",
+      "--method",
+      "softmax",
+      "--epochs",
+      "200"
+    ],
+    "cwd": "/tmp/hw2-runtime/icl/repo",
+    "return_code": 0,
+    "seconds": 2577.332677462
+  },
+  {
+    "stage": "icl_softmax_evaluate",
+    "command": [
+      "/tmp/hw2-runtime/icl/env/bin/python",
+      "/tmp/hw2-runtime/icl/repo/scripts/run_icl_probe.py",
+      "evaluate",
+      "--source",
+      "/tmp/hw2-runtime/icl/seq_icl",
+      "--cache",
+      "/tmp/hw2-runtime/icl/regbench/dfa_1000_eval500_lenauthor_seed0.pt",
+      "--examples",
+      "1000",
+      "--eval-examples",
+      "500",
+      "--output-dir",
+      "/kaggle/working/results/icl/full_20261010_143712_771702/in_context_learning/softmax",
+      "--method",
+      "softmax"
+    ],
+    "cwd": "/tmp/hw2-runtime/icl/repo",
+    "return_code": 0,
+    "seconds": 654.9759261160002
+  },
+  {
+    "stage": "icl_epanechnikov_train",
+    "command": [
+      "/tmp/hw2-runtime/icl/env/bin/python",
+      "-m",
+      "torch.distributed.run",
+      "--standalone",
+      "--nproc_per_node=2",
+      "/tmp/hw2-runtime/icl/repo/scripts/run_icl_probe.py",
+      "train",
+      "--source",
+      "/tmp/hw2-runtime/icl/seq_icl",
+      "--cache",
+      "/tmp/hw2-runtime/icl/regbench/dfa_1000_eval500_lenauthor_seed0.pt",
+      "--examples",
+      "1000",
+      "--eval-examples",
+      "500",
+      "--output-dir",
+      "/kaggle/working/results/icl/full_20261010_143712_771702/in_context_learning/epanechnikov",
+      "--method",
+      "epanechnikov",
+      "--epochs",
+      "200"
+    ],
+    "cwd": "/tmp/hw2-runtime/icl/repo",
+    "return_code": 0,
+    "seconds": 3588.4166039029997
+  },
+  {
+    "stage": "icl_epanechnikov_evaluate",
+    "command": [
+      "/tmp/hw2-runtime/icl/env/bin/python",
+      "/tmp/hw2-runtime/icl/repo/scripts/run_icl_probe.py",
+      "evaluate",
+      "--source",
+      "/tmp/hw2-runtime/icl/seq_icl",
+      "--cache",
+      "/tmp/hw2-runtime/icl/regbench/dfa_1000_eval500_lenauthor_seed0.pt",
+      "--examples",
+      "1000",
+      "--eval-examples",
+      "500",
+      "--output-dir",
+      "/kaggle/working/results/icl/full_20261010_143712_771702/in_context_learning/epanechnikov",
+      "--method",
+      "epanechnikov"
+    ],
+    "cwd": "/tmp/hw2-runtime/icl/repo",
+    "return_code": 0,
+    "seconds": 652.4774744490005
+  },
+  {
+    "stage": "icl_relumax_train",
+    "command": [
+      "/tmp/hw2-runtime/icl/env/bin/python",
+      "-m",
+      "torch.distributed.run",
+      "--standalone",
+      "--nproc_per_node=2",
+      "/tmp/hw2-runtime/icl/repo/scripts/run_icl_probe.py",
+      "train",
+      "--source",
+      "/tmp/hw2-runtime/icl/seq_icl",
+      "--cache",
+      "/tmp/hw2-runtime/icl/regbench/dfa_1000_eval500_lenauthor_seed0.pt",
+      "--examples",
+      "1000",
+      "--eval-examples",
+      "500",
+      "--output-dir",
+      "/kaggle/working/results/icl/full_20261010_143712_771702/in_context_learning/relumax",
+      "--method",
+      "relumax",
+      "--epochs",
+      "200"
+    ],
+    "cwd": "/tmp/hw2-runtime/icl/repo",
+    "return_code": 0,
+    "seconds": 3363.231963177999
+  },
+  {
+    "stage": "icl_relumax_evaluate",
+    "command": [
+      "/tmp/hw2-runtime/icl/env/bin/python",
+      "/tmp/hw2-runtime/icl/repo/scripts/run_icl_probe.py",
+      "evaluate",
+      "--source",
+      "/tmp/hw2-runtime/icl/seq_icl",
+      "--cache",
+      "/tmp/hw2-runtime/icl/regbench/dfa_1000_eval500_lenauthor_seed0.pt",
+      "--examples",
+      "1000",
+      "--eval-examples",
+      "500",
+      "--output-dir",
+      "/kaggle/working/results/icl/full_20261010_143712_771702/in_context_learning/relumax",
+      "--method",
+      "relumax"
+    ],
+    "cwd": "/tmp/hw2-runtime/icl/repo",
+    "return_code": 0,
+    "seconds": 651.4033573109991
+  },
+  {
+    "stage": "icl_export",
+    "command": [
+      "/tmp/hw2-runtime/icl/env/bin/python",
+      "/tmp/hw2-runtime/icl/repo/scripts/run_icl_probe.py",
+      "summarize",
+      "--source",
+      "/tmp/hw2-runtime/icl/seq_icl",
+      "--output-dir",
+      "/kaggle/working/results/icl/full_20261010_143712_771702/in_context_learning",
+      "--kind",
+      "budget-training"
+    ],
+    "cwd": "/tmp/hw2-runtime/icl/repo",
+    "return_code": 0,
+    "seconds": 14.21690616199885
+  }
+]

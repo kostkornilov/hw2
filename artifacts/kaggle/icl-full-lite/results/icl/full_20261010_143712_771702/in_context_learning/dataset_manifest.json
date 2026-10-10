@@ -1,0 +1,47 @@
+{
+  "examples": 1000,
+  "seed": 0,
+  "pythonhashseed": "0",
+  "dataset_config": {
+    "_name_": "icl_dfa",
+    "num_examples": 1000,
+    "num_test_examples": 1000,
+    "vocab_size": 20,
+    "max_num_nodes": 12,
+    "max_num_in_context_examples": 20,
+    "min_num_in_context_examples": 10,
+    "max_outgoing_edges": 4,
+    "max_len_per_example": 50,
+    "input_seq_len": 4096,
+    "copy_method": "assoc_recall",
+    "batch_size": 16
+  },
+  "generation_seconds": 14.32335323999996,
+  "sha256": "d4cd6c3568fe2d5507e761c63246866cc98de2b6f884e70c364adb3d44c72d25",
+  "splits": {
+    "train": {
+      "examples": 1000,
+      "padded_tokens": 657,
+      "min_tokens": 156,
+      "median_tokens": 372.0,
+      "max_tokens": 657,
+      "scored_tokens": 362186
+    },
+    "test": {
+      "examples": 500,
+      "padded_tokens": 670,
+      "min_tokens": 171,
+      "median_tokens": 371.0,
+      "max_tokens": 670,
+      "scored_tokens": 181089
+    },
+    "val": {
+      "examples": 500,
+      "padded_tokens": 642,
+      "min_tokens": 173,
+      "median_tokens": 371.0,
+      "max_tokens": 642,
+      "scored_tokens": 181822
+    }
+  }
+}

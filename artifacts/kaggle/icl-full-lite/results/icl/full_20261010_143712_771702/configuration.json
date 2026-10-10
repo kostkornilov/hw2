@@ -1,0 +1,84 @@
+{
+  "job": "icl",
+  "mode": "full",
+  "repository_commit": "d60271526bc5521f2843235f661ec4e87bae11c3",
+  "config": {
+    "methods": [
+      "softmax",
+      "epanechnikov",
+      "relumax"
+    ],
+    "language_modeling": {
+      "seed": 1337,
+      "attention_backend": "adasplash",
+      "dtype": "float16",
+      "compile": true,
+      "n_layer": 1,
+      "n_embd": 768,
+      "n_head": 12,
+      "pmem_size": 2688,
+      "block_size": 512,
+      "batch_size": 8,
+      "gradient_accumulation_steps": 32,
+      "learning_rate": 0.005,
+      "min_lr": 0.0001,
+      "weight_decay": 0.1,
+      "beta1": 0.9,
+      "beta2": 0.95,
+      "grad_clip": 1.0,
+      "warmup_iters": 25,
+      "lr_decay_iters": 1000,
+      "decay_type": "cosine",
+      "eval_iters": 10,
+      "log_interval": 100
+    },
+    "in_context_learning": {
+      "source_commit": "9b9223d15348b5a415fb453ed988ed5f7ab9fbdc",
+      "examples": 1000
+    },
+    "length_generalization": {
+      "seed": 1338,
+      "micro_batch": 32,
+      "eval_batch": 8,
+      "lr_warmup": 1536,
+      "lr_decay": 6000,
+      "budget_minutes": 150
+    },
+    "modes": {
+      "smoke": {
+        "lm_steps": 4,
+        "lm_eval_interval": 2,
+        "icl_epochs": 3,
+        "icl_train_examples": 32,
+        "icl_eval_examples": 2,
+        "icl_sequence_length": 16,
+        "sort_steps": 2,
+        "sort_measurement_warmup": 1,
+        "sort_test_examples": 2
+      },
+      "full": {
+        "lm_steps": 1000,
+        "lm_eval_interval": 100,
+        "icl_epochs": 200,
+        "icl_eval_examples": 500,
+        "sort_steps": 6000,
+        "sort_measurement_warmup": 8,
+        "sort_test_examples": 1000
+      }
+    }
+  },
+  "effective_limits": {
+    "lm_steps": 1000,
+    "lm_eval_interval": 100,
+    "icl_epochs": 200,
+    "icl_eval_examples": 500,
+    "sort_steps": 6000,
+    "sort_measurement_warmup": 8,
+    "sort_test_examples": 1000
+  },
+  "deviations": {
+    "lm": "1000 instead of 80000 steps; warmup 25 / decay 1000; one seed; FP16",
+    "icl": "Only train 1k; one seed; two T4 instead of author A6000",
+    "sort": "6000 instead of 156250 steps; warmup 1536 / decay 6000; regenerated author data; one seed; FP16; compile=False"
+  }
+}
