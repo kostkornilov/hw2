@@ -318,7 +318,7 @@ while iter_num < args.max_iters:
     gradient_accumulation_steps = args.gradient_accumulation_steps
     torch.cuda.synchronize()
     step_start = time.perf_counter()
-    step_loss = 0.0
+    step_loss = torch.zeros((), device=device)
     for micro_step in range(gradient_accumulation_steps):
         # Each microbatch must contain fresh examples to preserve the global batch size.
         X, Y = next(train_loader)
@@ -342,7 +342,7 @@ while iter_num < args.max_iters:
         
         # backward pass, with gradient scaling if training in fp16
         scaler.scale(loss).backward()
-        step_loss += loss.detach().item()
+        step_loss += loss.detach()
 
 
     # clip the gradient
@@ -363,7 +363,7 @@ while iter_num < args.max_iters:
     dt = time.perf_counter() - step_start
 
     if iter_num % args.log_interval == 0 and master_process:
-        lossf = step_loss
+        lossf = step_loss.item()
 
         VREM = torch.cuda.max_memory_allocated() / (1024.0 * 1024.0 * 1024.0)
         utilization = torch.cuda.utilization(device)
