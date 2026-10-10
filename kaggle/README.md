@@ -30,12 +30,15 @@ kaggle kernels status konstantinkornilov/hw2-lm
 kaggle kernels status konstantinkornilov/hw2-icl-sort
 ```
 
-После завершения скачать ZIP именно проверяемой версии; `<VERSION>` — номер
-версии, созданной push. Каталог скачивания должен быть новым.
+После завершения скачать ZIP до следующего push в эту джобу. Каталог скачивания
+должен быть новым. В установленном Kaggle CLI 2.2.4 команда `kernels output`
+игнорирует суффикс номера версии и получает последние результаты. При проверке
+сверить `repository_commit` и `mode` в `configuration.json` внутри архива с
+проверяемым запуском; результаты smoke сохранить до отправки full.
 
 ```bash
-kaggle kernels output konstantinkornilov/hw2-lm/<VERSION> -p artifacts/kaggle/lm-smoke --file-pattern '.*[.]zip$'
-kaggle kernels output konstantinkornilov/hw2-icl-sort/<VERSION> -p artifacts/kaggle/icl-sort-smoke --file-pattern '.*[.]zip$'
+kaggle kernels output konstantinkornilov/hw2-lm -p artifacts/kaggle/lm-smoke --file-pattern '.*[.]zip$'
+kaggle kernels output konstantinkornilov/hw2-icl-sort -p artifacts/kaggle/icl-sort-smoke --file-pattern '.*[.]zip$'
 python3 kaggle/run_lm.py --check-output <DOWNLOADED_LM_ZIP>
 python3 kaggle/run_icl_sort.py --check-output <DOWNLOADED_ICL_SORT_ZIP>
 ```
