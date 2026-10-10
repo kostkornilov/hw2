@@ -261,6 +261,8 @@ assert torch.randint(0,999999,size=(1,),generator=g, device=device)[0]==538683
 
 ##################### training    #####################
 def evaluate_and_save():
+    torch.cuda.synchronize()
+    evaluation_start = time.perf_counter()
     losses = estimate_loss(model, {"train": train_loader, "val": val_loader},
                            ctx=ctx, eval_iters=args.eval_iters, device=device)
     if ddp:
@@ -286,6 +288,11 @@ def evaluate_and_save():
             writer = csv.writer(stream)
             writer.writerow(["step", "train_loss", "val_loss"])
             writer.writerows(zip(loss_history["iter"], loss_history["train"], loss_history["val"]))
+    if ddp:
+        dist.barrier()
+    torch.cuda.synchronize()
+    if master_process:
+        logger.info(f"[timing] evaluation + checkpoint: {time.perf_counter() - evaluation_start:.3f}s")
     return losses
 
 while iter_num < args.max_iters:

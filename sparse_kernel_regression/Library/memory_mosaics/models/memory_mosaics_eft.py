@@ -309,7 +309,8 @@ class InContextAssoMemBlock(nn.Module): # leakyaverage key, then normalize. conv
                 mask = self.causal_mask[:, :, :scores.size(-2), :scores.size(-1)]
 
                 # push masked entries far negative BEFORE max
-                scores = scores.masked_fill(~mask, -1e12)
+                # -1e12 cannot be represented in FP16 on T4.
+                scores = scores.masked_fill(~mask, torch.finfo(scores.dtype).min)
 
                 # center
                 scores = scores - scores.max(dim=-1, keepdim=True).values
