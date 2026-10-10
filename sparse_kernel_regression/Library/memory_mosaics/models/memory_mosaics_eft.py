@@ -22,7 +22,7 @@ import time
 from collections import namedtuple
 
 from .feature_extractor import LeakyAverageCuda
-from adasplash import adasplash_no_block_mask as adasplash
+from .kernel_attention import compact_attention
 #from adasplash import adasplash
 
 class LayerNorm(nn.Module):
@@ -334,7 +334,19 @@ class InContextAssoMemBlock(nn.Module): # leakyaverage key, then normalize. conv
             y = torch.cat([prefix, y_out], dim=2)
         else:
             # AdaSplash / kernel attention
+            if self.method not in {"epanechnikov", "biweight", "triweight"}:
+                raise ValueError(f"Unsupported attention method: {self.method}")
+            alpha = {"epanechnikov": 2.0, "biweight": 1.5, "triweight": 4 / 3}[self.method]
             q = k[:, :, self.v_shift + self.att_shift:, :]  # (B, H, T_shifted, D)
+            if getattr(self.config, "attention_backend", "adasplash") == "torch":
+                # The query corresponds to its original (shifted) row in the causal mask.
+                mask = self.causal_mask[:, :, self.v_shift + self.att_shift:T, :T]
+                o = compact_attention(q, k, v, mask, alpha)
+                prefix = y[:, :, :self.v_shift + self.att_shift]
+                y = torch.cat([prefix, o], dim=2)
+                y = y.transpose(1, 2).contiguous().view(B, T, C)
+                return self.resid_dropout(self.c_proj(y))
+            from adasplash import adasplash_no_block_mask as adasplash
             # add dummy last row
             dummy = torch.zeros_like(q[:, :, :1, :])       # (B, H, 1, D)
             q = torch.cat([q, dummy], dim=2)               # (B, H, T_shifted+1, D)

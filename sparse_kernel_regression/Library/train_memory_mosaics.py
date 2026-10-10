@@ -25,6 +25,8 @@ import os
 import time
 from contextlib import nullcontext
 import copy
+import csv
+import json
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import destroy_process_group
@@ -43,7 +45,7 @@ import numpy as np
 
 from memory_mosaics.data.dataset import StoriesDataset
 from memory_mosaics.data.dataloader import InfiniteDataLoader
-from Library.memory_mosaics.evaluation.common_metrics_epoch1 import estimate_loss
+from memory_mosaics.evaluation.common_metrics import estimate_loss
 
 #####################
 # two version of memory mosaics. Pick one as you wish!
@@ -56,6 +58,8 @@ parser = argparse.ArgumentParser()
 # general 
 parser.add_argument('--seed', type=int, default=1337, help='seed ')
 parser.add_argument('--method',type=str,default='softmax', help='method')
+parser.add_argument('--attention_backend', choices=['adasplash', 'torch'], default='adasplash',
+                    help='torch uses FP32 sparsemax/entmax attention without Triton kernels')
 parser.add_argument('--out_dir',type=str,default='results/test_1h', help='output directory')
 parser.add_argument('--backend',type=str, default='nccl', help='distributed training backend. [nccl, gloo, etc]. nccl is faster in general.')
 parser.add_argument('--device', type=str, default='cuda', help="examples: 'cpu', 'cuda', 'cuda:0', 'cuda:1' etc., or try 'mps' on macbooks")
@@ -134,8 +138,9 @@ if master_process:
 
 if master_process:
     os.makedirs(args.out_dir + "/" + args.method, exist_ok=True)
-torch.distributed.barrier()  # <-- makes sure other ranks wait
-tokens_per_iter = ddp_world_size * args.batch_size * args.block_size
+if ddp:
+    torch.distributed.barrier()
+tokens_per_iter = ddp_world_size * args.batch_size * args.block_size * args.gradient_accumulation_steps
 logger = create_logger(os.path.join(args.out_dir + "/" + args.method, "train.log"), rank=rank)
 init_from = "resume" if os.path.isfile(os.path.join(args.out_dir + "/" + args.method, "ckpt.pt")) else 'scratch'
 if master_process:
@@ -198,6 +203,11 @@ if init_from == "resume":
     # resume training from a checkpoint.
     ckpt_path = os.path.join(args.out_dir+ "/" + args.method+ "/", "ckpt.pt")
     checkpoint = torch.load(ckpt_path, map_location=device)
+    saved_args = checkpoint.get("model_args", {})
+    for key in ("method", "n_layer", "n_head", "n_embd", "block_size", "pmem_size",
+                "attention_backend", "learning_rate", "min_lr", "weight_decay", "seed"):
+        if key in saved_args and saved_args[key] != getattr(args, key):
+            raise ValueError(f"Resume configuration mismatch for {key}; use a new out_dir.")
     state_dict = checkpoint["model"]
     loss_history = checkpoint["loss_history"]
     # fix the keys of the state dictionary :(
@@ -215,6 +225,8 @@ model.to(device)
 
 # initialize a GradScaler. If enabled=False scaler is a no-op
 scaler = torch.cuda.amp.GradScaler(enabled=(args.dtype == "float16"))
+if init_from == "resume" and "scaler" in checkpoint:
+    scaler.load_state_dict(checkpoint["scaler"])
 
 # optimizer
 optimizer = model.configure_optimizers( args.weight_decay, args.learning_rate, (args.beta1, args.beta2), device_type)
@@ -248,7 +260,35 @@ g = g.manual_seed(123)
 assert torch.randint(0,999999,size=(1,),generator=g, device=device)[0]==538683 
 
 ##################### training    #####################
-while True:
+def evaluate_and_save():
+    losses = estimate_loss(model, {"train": train_loader, "val": val_loader},
+                           ctx=ctx, eval_iters=args.eval_iters, device=device)
+    if ddp:
+        scores = torch.tensor(list(losses.values()), device=device)
+        dist.all_reduce(scores)
+        losses = {key: scores[i].item() / ddp_world_size for i, key in enumerate(losses)}
+    if not loss_history["iter"] or loss_history["iter"][-1] != iter_num:
+        loss_history["iter"].append(iter_num)
+        loss_history["train"].append(losses["train"])
+        loss_history["val"].append(losses["val"])
+    checkpoint = {
+        "model": raw_model.state_dict(), "optimizer": optimizer.state_dict(),
+        "scaler": scaler.state_dict(), "model_args": conf.__dict__,
+        "iter_num": iter_num, "loss_history": loss_history,
+    }
+    if master_process:
+        result_dir = os.path.join(args.out_dir, args.method)
+        logger.info(f"[eval] step {iter_num}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+        torch.save(checkpoint, os.path.join(result_dir, "ckpt.pt"))
+        with open(os.path.join(result_dir, "loss_history.json"), "w") as stream:
+            json.dump(loss_history, stream, indent=2)
+        with open(os.path.join(result_dir, "metrics.csv"), "w", newline="") as stream:
+            writer = csv.writer(stream)
+            writer.writerow(["step", "train_loss", "val_loss"])
+            writer.writerows(zip(loss_history["iter"], loss_history["train"], loss_history["val"]))
+    return losses
+
+while iter_num < args.max_iters:
 
 
     # determine and set the learning rate for this iteration
@@ -262,32 +302,7 @@ while True:
 
     # evaluate the loss on train/val sets 
     if iter_num % args.eval_interval == 0 and (iter_num != 0):
-        
-        losses = estimate_loss(model, {"train": train_loader, "val": val_loader},
-            ctx=ctx, eval_iters=args.eval_iters, device=device)
-        #raw_model.set_causal(args.causal_rate)
-
-        if ddp:  # distributed evaluation. each GPU estimates {eval_iters} batches. Then average.
-            scores = torch.Tensor(np.array([*[losses[key] for key in losses.keys()], 1.0])).to(device)
-            dist.all_reduce(scores, op=torch.distributed.ReduceOp.SUM)
-            for i, key in enumerate(losses.keys()):
-                losses[key] = scores[i].item() / scores[-1].item()
-        loss_history["train"].append(losses["train"])
-        loss_history["val"].append(losses["val"])
-        loss_history["iter"].append(iter_num)
-        checkpoint = {
-            "model": raw_model.state_dict(),
-            "optimizer": optimizer.state_dict(),
-            "model_args": conf.__dict__,
-            "iter_num": iter_num,
-            "loss_history": loss_history,
-        }
-        if master_process:
-            logger.info(
-                f"[eval] step {iter_num}:"
-                + ",".join([f"{key} loss {losses[key]:.4f}" for key in losses]))
-            logger.info(f"saving checkpoint to {args.out_dir}")
-            torch.save(checkpoint, os.path.join(args.out_dir + "/" + args.method, "ckpt.pt"))
+        losses = evaluate_and_save()
             
     if iter_num % args.save_checkpoint_interval == 0 and (iter_num !=0):
         checkpoint = {
@@ -300,18 +315,15 @@ while True:
         if master_process:
             torch.save(checkpoint, os.path.join(args.out_dir + "/" + args.method, f"ckpt{iter_num}.pt"))
 
-    # get training batches 
-    #X, Y, storyid = next(train_loader) if args.use_storyid else [*next(train_loader), None]
-    X, Y = next(train_loader)
-    X = (X.pin_memory().to(device, non_blocking=True) if "cuda" in device else X.to(device))
-    Y = (Y.pin_memory().to(device, non_blocking=True) if "cuda" in device else Y.to(device))   
-    #if storyid is not None:
-    #   storyid = (storyid.pin_memory().to(device, non_blocking=True) if "cuda" in device else storyid.to(device))
-
-  
     gradient_accumulation_steps = args.gradient_accumulation_steps
-
+    torch.cuda.synchronize()
+    step_start = time.perf_counter()
+    step_loss = 0.0
     for micro_step in range(gradient_accumulation_steps):
+        # Each microbatch must contain fresh examples to preserve the global batch size.
+        X, Y = next(train_loader)
+        X = X.to(device, non_blocking=True)
+        Y = Y.to(device, non_blocking=True)
         if ddp:
             # in DDP training we only need to sync gradients at the last micro step.
             # the official way to do this is with model.no_sync() context manager, but
@@ -330,6 +342,7 @@ while True:
         
         # backward pass, with gradient scaling if training in fp16
         scaler.scale(loss).backward()
+        step_loss += loss.detach().item()
 
 
     # clip the gradient
@@ -346,15 +359,14 @@ while True:
     optimizer.zero_grad(set_to_none=True)
 
     # timing and logging
-    t1 = time.time()
-    dt = t1 - t0
-    t0 = t1
+    torch.cuda.synchronize()
+    dt = time.perf_counter() - step_start
 
     if iter_num % args.log_interval == 0 and master_process:
-        lossf = loss.item() * args.gradient_accumulation_steps
+        lossf = step_loss
 
         VREM = torch.cuda.max_memory_allocated() / (1024.0 * 1024.0 * 1024.0)
-        utilization = torch.cuda.utilization()
+        utilization = torch.cuda.utilization(device)
         logger.info(f"iter {iter_num}: loss {lossf:.4f}, time {dt*1000:.2f}ms / step, {timeestimater.gettime_format()}, VREM {VREM:.1f} GB, utilization {utilization:.1f}%")
 
 
@@ -362,10 +374,7 @@ while True:
     iter_num += 1
     local_iter_num += 1
 
-    # termination conditions
-    if iter_num > args.max_iters:
-        break
-
+losses = evaluate_and_save()
 if master_process:
     logger.info( f"total time {(time.time() - tstart)/3600:.1f} h, train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
 
