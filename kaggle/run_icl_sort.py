@@ -32,10 +32,14 @@ def icl(job):
     if registration not in registry.read_text():
         registry.write_text(registry.read_text() + registration)
     (source / "src/dataloaders/__init__.py").write_text("from . import dfa\nfrom .base import SequenceDataset\n")
-    examples = job.config["in_context_learning"]["examples"]
-    cache = job.base / f"regbench/dfa_{examples}_seed0.pt"
+    examples = job.limits.get("icl_train_examples", job.config["in_context_learning"]["examples"])
+    eval_examples = job.limits["icl_eval_examples"]
+    seq_len = job.limits.get("icl_sequence_length")
+    cache = job.base / f"regbench/dfa_{examples}_eval{eval_examples}_len{seq_len or 'author'}_seed0.pt"
     helper = job.repo / "scripts/run_icl_probe.py"
-    common = ["--source", source, "--cache", cache, "--examples", examples]
+    common = ["--source", source, "--cache", cache, "--examples", examples, "--eval-examples", eval_examples]
+    if seq_len is not None:
+        common += ["--sequence-length", seq_len]
     if not cache.exists():
         job.run("icl_data", [job.python, helper, "prepare", *common])
     root = job.root / "in_context_learning"

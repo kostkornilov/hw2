@@ -31,15 +31,20 @@ def config_for(args, author):
     from hydra import compose, initialize_config_dir
     from omegaconf import OmegaConf
 
-    with initialize_config_dir(config_dir=str(args.source / "configs"), version_base="1.2"):
-        config = compose(config_name="config", overrides=[
+    overrides = [
             "experiment=dfa/mm", f"dataset.num_examples={args.examples}",
-            "dataset.num_test_examples=1000", "dataset.batch_size=16",
+            f"dataset.num_test_examples={2 * args.eval_examples}", "dataset.batch_size=16",
             "model.n_layer=2", "model.n_embd=128", "model.n_head=8",
             f"+model.method={args.method}", "optimizer.lr=1e-4",
             "optimizer.weight_decay=0.01", "train.seed=0", "trainer.max_epochs=200",
             "wandb=null",
-        ])
+        ]
+    if args.sequence_length is not None:
+        overrides += [f"dataset.input_seq_len={args.sequence_length}",
+                      "dataset.min_num_in_context_examples=2", "dataset.max_num_in_context_examples=3",
+                      "dataset.max_len_per_example=4"]
+    with initialize_config_dir(config_dir=str(args.source / "configs"), version_base="1.2"):
+        config = compose(config_name="config", overrides=overrides)
     # Resolve the 200-epoch LR schedule before imposing the short stopping point.
     config = OmegaConf.create(OmegaConf.to_container(config, resolve=True))
     return author.utils.train.process_config(config)
@@ -47,10 +52,13 @@ def config_for(args, author):
 
 def load_cached(args, config):
     import torch
+    from omegaconf import OmegaConf
     from src.dataloaders.dfa import ICLDFADataModule
 
     meta = json.loads(args.cache.with_suffix(".json").read_text())
     assert meta["examples"] == args.examples
+    assert all(meta["splits"][split]["examples"] == args.eval_examples for split in ("val", "test")), "Evaluation cache size differs from requested size"
+    assert meta["dataset_config"] == OmegaConf.to_container(config.dataset, resolve=True), "Cached generation settings differ from requested settings"
     assert meta["sha256"] == digest(args.cache), "Dataset cache changed"
     original_setup = ICLDFADataModule.setup
 
@@ -84,7 +92,7 @@ def prepare(args, config):
         meta["splits"][split] = {"examples": len(data), "padded_tokens": data.inputs.shape[1],
             "min_tokens": int(lengths.min()), "median_tokens": float(lengths.float().median()),
             "max_tokens": int(lengths.max()), "scored_tokens": int((data.targets != -100).sum())}
-        assert len(data) == (args.examples if split == "train" else 500)
+        assert len(data) == (args.examples if split == "train" else args.eval_examples)
         assert data.inputs.shape == data.targets.shape
         assert data.inputs.shape[1] <= config.model.block_size
     save_json(args.cache.with_suffix(".json"), meta)
@@ -228,6 +236,7 @@ def validate_run(run):
     assert last["global_step"] == timing["global_step"]
     assert (run / "metrics/probe/metrics.csv").stat().st_size > 0
     metrics = {}
+    dataset_meta = json.loads((run / "dataset_manifest.json").read_text())
     for split in ("val", "test"):
         folders = list((run / "generations").glob(f"*_{split}_batch"))
         assert len(folders) == 1
@@ -254,29 +263,30 @@ def validate_run(run):
                 last_l1 += np.abs(probs[-1] - target[-1]).sum()
                 total += len(target)
                 offset += 1
-        assert offset == len(rows) == 500 and total > 0
+        assert offset == len(rows) == dataset_meta["splits"][split]["examples"] and total > 0
         metrics[f"{split}_accuracy"] = float(correct / total)
         metrics[f"{split}_tvd"] = float(l1 / (2 * total))
         metrics[f"{split}_last_token_accuracy"] = float(last_correct / offset)
         metrics[f"{split}_last_token_tvd"] = float(last_l1 / (2 * offset))
         assert 0 <= metrics[f"{split}_tvd"] <= 1
     stable = timing["epochs"][1:]
-    assert len(stable) >= 2, "At least three full epochs needed for the estimate"
+    assert len(stable) >= 2, "At least three epochs needed to validate epoch logs"
     train_s = statistics.median(e["train_seconds"] for e in stable)
     val_s = statistics.median(e["validation_seconds"] for e in stable)
     ckpt_s = statistics.median(timing["checkpoint_seconds"])
     final_s = evaluation["elapsed_seconds"]
     startup_s = max(0, timing["elapsed_seconds"] - sum(e["train_seconds"] + e["validation_seconds"] for e in timing["epochs"]) - sum(timing["checkpoint_seconds"]))
     # Upper estimate: best + last saved at every epoch, two files per epoch.
-    projected_s = startup_s + 200 * (train_s + val_s + 2 * ckpt_s) + final_s
+    representative = timing["examples"] == 1000 and all(dataset_meta["splits"][s]["examples"] == 500 for s in ("val", "test")) and dataset_meta["dataset_config"]["max_len_per_example"] == 50
+    projected_s = startup_s + 200 * (train_s + val_s + 2 * ckpt_s) + final_s if representative else None
     manifest = [{"path": str(p.relative_to(run)), "bytes": p.stat().st_size, "sha256": digest(p)}
                 for p in sorted(run.rglob("*")) if p.is_file() and p.name != "artifact_validation.json"]
     assert all(p["bytes"] > 0 for p in manifest)
     save_json(run / "artifact_validation.json", {"status": "passed", "metrics": metrics, "files": manifest})
     return {"method": timing["method"], "examples": timing["examples"],
             "train_seconds_per_epoch": train_s, "validation_seconds_per_epoch": val_s,
-            "final_evaluation_seconds": final_s, "estimated_200_epochs_hours": projected_s / 3600,
-            "within_80_minutes": projected_s <= 80 * 60, **metrics}
+            "final_evaluation_seconds": final_s, "estimated_200_epochs_hours": projected_s / 3600 if projected_s is not None else None,
+            "within_80_minutes": projected_s <= 80 * 60 if projected_s is not None else None, **metrics}
 
 
 def summarize(args):
@@ -294,10 +304,11 @@ def summarize(args):
              "| Method | Train s/epoch | Validation s/epoch | 200 epochs, h | Test accuracy | Test TVD | Last-token accuracy | Last-token TVD |",
              "|---|---:|---:|---:|---:|---:|---:|---:|"]
     for row in rows:
-        lines.append(f"| {row['method']} | {row['train_seconds_per_epoch']:.2f} | {row['validation_seconds_per_epoch']:.2f} | {row['estimated_200_epochs_hours']:.2f} | {100*row['test_accuracy']:.2f}% | {100*row['test_tvd']:.2f}% | {100*row['test_last_token_accuracy']:.2f}% | {100*row['test_last_token_tvd']:.2f}% |")
+        projected = f"{row['estimated_200_epochs_hours']:.2f}" if row['estimated_200_epochs_hours'] is not None else "n/a"
+        lines.append(f"| {row['method']} | {row['train_seconds_per_epoch']:.2f} | {row['validation_seconds_per_epoch']:.2f} | {projected} | {100*row['test_accuracy']:.2f}% | {100*row['test_tvd']:.2f}% | {100*row['test_last_token_accuracy']:.2f}% | {100*row['test_last_token_tvd']:.2f}% |")
     lines += ["", "Прогноз включает validation на каждой эпохе, сохранение best/last и финальную оценку.",
               "Первую эпоху исключаем из медианы; scheduler остаётся рассчитанным на 200 эпох.",
-              f"Суммарный прогноз трёх методов: {sum(row['estimated_200_epochs_hours'] for row in rows):.2f} ч вычислений.",
+              (f"Суммарный прогноз трёх методов: {sum(row['estimated_200_epochs_hours'] for row in rows):.2f} ч вычислений." if all(row['estimated_200_epochs_hours'] is not None for row in rows) else "Укороченный smoke не используется для прогноза длительного обучения."),
               "Accuracy и TVD пересчитаны по всем позициям сохранённых тестовых предсказаний",
               "по формулам авторского plot_ICL.py; это не отдельная last-token метрика."]
     (args.run / "summary.md").write_text("\n".join(lines) + "\n")
@@ -305,7 +316,7 @@ def summarize(args):
     for method in ("softmax", "epanechnikov", "relumax"):
         timing = json.loads((args.run / method / "timing.json").read_text())
         ax.plot([e["epoch"] + 1 for e in timing["epochs"]], [e["val/loss"] for e in timing["epochs"]], marker="o", label=method)
-    ax.set(xlabel="Epoch", ylabel="Validation loss", title=f"RegBench 1k — {kind}")
+    ax.set(xlabel="Epoch", ylabel="Validation loss", title=f"RegBench — {kind}")
     if len(timing["epochs"]) <= 10:
         ax.set_xticks([e["epoch"] + 1 for e in timing["epochs"]])
     ax.grid(alpha=0.25)
@@ -324,10 +335,14 @@ def main():
     parser.add_argument("--cache", type=Path)
     parser.add_argument("--output-dir", "--run", dest="run", type=Path)
     parser.add_argument("--examples", type=int, default=1000)
+    parser.add_argument("--eval-examples", type=int, default=500, help="Examples per validation/test split; author loader receives twice this number")
+    parser.add_argument("--sequence-length", type=int, help="Smoke-only character limit and short in-context words; omit for author generation")
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--method", choices=("softmax", "epanechnikov", "relumax"), default="softmax")
     parser.add_argument("--kind", choices=("timing-smoke", "budget-training"), default="timing-smoke")
     args = parser.parse_args()
+    assert args.examples > 0 and args.eval_examples > 0 and args.epochs > 0
+    assert args.sequence_length is None or args.sequence_length >= 8
     args.source = args.source.resolve()
     for name in ("cache", "run"):
         if getattr(args, name) is not None:

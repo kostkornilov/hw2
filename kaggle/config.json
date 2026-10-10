@@ -37,7 +37,7 @@
     "budget_minutes": 150
   },
   "modes": {
-    "smoke": {"lm_steps": 4, "lm_eval_interval": 2, "icl_epochs": 3, "sort_steps": 4, "sort_measurement_warmup": 1, "sort_test_examples": 128},
-    "full": {"lm_steps": 1000, "lm_eval_interval": 100, "icl_epochs": 200, "sort_steps": 6000, "sort_measurement_warmup": 8, "sort_test_examples": 1000}
+    "smoke": {"lm_steps": 4, "lm_eval_interval": 2, "icl_epochs": 3, "icl_train_examples": 32, "icl_eval_examples": 2, "icl_sequence_length": 16, "sort_steps": 2, "sort_measurement_warmup": 1, "sort_test_examples": 2},
+    "full": {"lm_steps": 1000, "lm_eval_interval": 100, "icl_epochs": 200, "icl_eval_examples": 500, "sort_steps": 6000, "sort_measurement_warmup": 8, "sort_test_examples": 1000}
   }
 }
